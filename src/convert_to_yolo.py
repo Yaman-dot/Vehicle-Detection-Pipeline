@@ -11,7 +11,7 @@ import yaml
 CSV_PATH = r"E:\Documents\Codes\Python\vehicle detection pipeline\data\raw\train.csv"
 IMG_DIR = r"E:\Documents\Codes\Python\vehicle detection pipeline\data\raw\train"
 OUTPUT_DIR = r"E:\Documents\Codes\Python\vehicle detection pipeline\data"
-YAML_PATH = r"E:\Documents\Codes\Python\vehicle detection pipeline\data"
+YAML_PATH = os.path.join(OUTPUT_DIR, "vehicles.yaml")
 CLASSES = ['Bus', 'Truck']
 VAL_SPLIT = 0.2
 
@@ -62,5 +62,5 @@ def create_yaml():
         yaml.dump(data_yaml, f, sort_keys=False)
     print(f"YOLO YAML file created at: {YAML_PATH}")
 
-create_yolo_files()
-create_yaml()
+#create_yolo_files()
+#create_yaml()
