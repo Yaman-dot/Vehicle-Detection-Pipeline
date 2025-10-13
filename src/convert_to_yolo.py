@@ -2,11 +2,11 @@ import os
 import pandas as pd
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-
+import shutil #copy files cuh
 #config
-CSV_PATH = r"E:\Documents\Codes\Python\vehicle detection pipeline\data\images\train\train.csv"
-IMG_DIR = "train"
-OUTPUT_DIR = "E:\Documents\Codes\Python\vehicle detection pipeline\data"
+CSV_PATH = r"E:\Documents\Codes\Python\vehicle detection pipeline\data\raw\train.csv"
+IMG_DIR = r"E:\Documents\Codes\Python\vehicle detection pipeline\data\raw\train"
+OUTPUT_DIR = r"E:\Documents\Codes\Python\vehicle detection pipeline\data"
 CLASSES = ['Bus', 'Truck']
 VAL_SPLIT = 0.2
 
@@ -20,7 +20,7 @@ def create_yolo_files():
     df = pd.read_csv(CSV_PATH)
     df = df.drop(columns=["Unnamed: 0"])
 
-    os.makedirs(f"{OUTPUT_DIR}/image/train", exist_ok=True)
+    os.makedirs(f"{OUTPUT_DIR}/images/train", exist_ok=True)
     os.makedirs(f"{OUTPUT_DIR}/images/val", exist_ok=True)
     os.makedirs(f"{OUTPUT_DIR}/labels/train", exist_ok=True)
     os.makedirs(f"{OUTPUT_DIR}/labels/val", exist_ok=True)
@@ -38,9 +38,14 @@ def create_yolo_files():
                     x_center, y_center, width, height = convert_to_yolo_bbox(row["XMin"], row["XMax"], row["YMin"], row["YMax"])
                     f.write(f"{cls} {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}\n")
 
-            # Copy image to corresponding folder
-            src = f"{IMG_DIR}/{img_id}.jpg"
-            dst = f"{OUTPUT_DIR}/images/{split}/{img_id}.jpg"
+            # Copy image safely using shutil
+            src = os.path.join(IMG_DIR, f"{img_id}.jpg")
+            dst = os.path.join(OUTPUT_DIR, "images", split, f"{img_id}.jpg")
             if os.path.exists(src):
-                os.system(f'cp "{src}" "{dst}"')
+                shutil.copy(src, dst)
+            else:
+                print(f"[WARNING] Image not found: {src}")
     print(f"Finished Conversion, dataset created at {OUTPUT_DIR}")
+
+create_yolo_files()
+
