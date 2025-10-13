@@ -3,10 +3,15 @@ import pandas as pd
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 import shutil #copy files cuh
+import yaml
+
+
+
 #config
 CSV_PATH = r"E:\Documents\Codes\Python\vehicle detection pipeline\data\raw\train.csv"
 IMG_DIR = r"E:\Documents\Codes\Python\vehicle detection pipeline\data\raw\train"
 OUTPUT_DIR = r"E:\Documents\Codes\Python\vehicle detection pipeline\data"
+YAML_PATH = r"E:\Documents\Codes\Python\vehicle detection pipeline\data"
 CLASSES = ['Bus', 'Truck']
 VAL_SPLIT = 0.2
 
@@ -46,6 +51,16 @@ def create_yolo_files():
             else:
                 print(f"[WARNING] Image not found: {src}")
     print(f"Finished Conversion, dataset created at {OUTPUT_DIR}")
+def create_yaml():
+    data_yaml = {
+        'train': os.path.join(OUTPUT_DIR, 'images', 'train'),
+        'val': os.path.join(OUTPUT_DIR, 'images', 'val'),
+        'nc': len(CLASSES),
+        'names': CLASSES
+    }
+    with open(YAML_PATH, 'w') as f:
+        yaml.dump(data_yaml, f, sort_keys=False)
+    print(f"YOLO YAML file created at: {YAML_PATH}")
 
 create_yolo_files()
-
+create_yaml()
