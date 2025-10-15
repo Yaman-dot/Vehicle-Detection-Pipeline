@@ -187,11 +187,11 @@ class Neck(nn.Module):
         self.upsample_10_13 = Upsample()#No trainable params
         
         ## C2F Layers
-        self.c2f_12 = C2F(in_channels=int(512*w*(1+r)), out_channels=int(512*w*(1+r)), 
+        self.c2f_12 = C2F(in_channels=int(512*w*(1+r)), out_channels=int(512*w), 
                             n_bnck=int(3*d), skip=False)
         self.c2f_15 = C2F(in_channels=int(768*w), out_channels=int(256*w),
                             n_bnck=int(3*d), skip=False)
-        self.c2f_18 = C2F(in_channels=int(768*w), out_channels=int(256*w),
+        self.c2f_18 = C2F(in_channels=int(768*w), out_channels=int(512*w),
                             n_bnck=int(3*d), skip=False)
         self.c2f_21 = C2F(in_channels=int(512*w*(1+r)), out_channels=int(512*w*r),
                             n_bnck=int(3*d), skip=False)
