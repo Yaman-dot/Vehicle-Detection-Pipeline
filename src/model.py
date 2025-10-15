@@ -22,3 +22,20 @@ class Conv(nn.Module):
     def forward(self, x):
         return self.actfn(self.bn(self.conv(x)))
 
+
+
+## Bottle Neck Block
+class BottleNeck(nn.Module):
+    def __init__(self, in_channels, out_channels, skip=True):
+        super().__init__()
+        self.conv1 = Conv(in_channels, out_channels, kernel_size=3, stride = 1, padding=1)
+        self.conv2 = Conv(out_channels, out_channels, kernel_size=3, stride = 1, padding=1)
+        self.skip=skip
+    def forward(self, x):
+        x_ins = x #Residual connection
+        x=self.conv1(x)
+        x=self.conv2(x)
+        if self.skip:
+            x=x+x_ins # add residual connection if u want
+        return x
+### C2F
