@@ -93,12 +93,12 @@ class SPPF(nn.Module):
         x = torch.cat(outputs, dim=1)
         x = self.conv2(x)
         return x
-#testing testing
+'''#testing testing
 sppf = SPPF(in_channels=64, out_channels=128)
 x = torch.rand(1, 64, 64, 64)
 y = sppf(x)
 print("hello??")
-print(f"output shape: {y.shape}")
+print(f"output shape: {y.shape}")'''
 
 
 
@@ -143,8 +143,8 @@ class Backbone(nn.Module):
         ### SPPF layer
         self.sppf_9 = SPPF(int(512*w*r), int(512*w*r))
     def forward(self, x):
-        x=self.conv0(x)
-        x=self.conv1(x)
+        x=self.conv_0(x)
+        x=self.conv_1(x)
         x=self.c2f_2(x)
         x=self.conv_3(x)
         x1 = self.c2f_4(x) #keep for some other thing i forgot
@@ -156,4 +156,80 @@ class Backbone(nn.Module):
         
         return x1,x2,x3
 
+#testing
+'''Backbone_n = Backbone(version='n')
+#print(f"{sum(p.numel() for p in Backbone_n.parameters())/1e6} million parameters")
 
+x =torch.rand(1,3,640,640)
+x1,x2,x3 = Backbone_n(x)
+print(f"{x1.shape}\n,{x2.shape}\n,{x3.shape}")'''
+
+
+###NECK BUT IT NEEDS UPSAMPLE +C2F 
+#####UPSAMPLE
+class Upsample(nn.Module):
+    def __init__(self, scale_factor=2,mode='nearest'):
+        super().__init__()
+        self.scale_factor = scale_factor
+        self.mode = mode
+    def forward(self, x):
+        return nn.functional.interpolate(x, scale_factor=self.scale_factor, mode=self.mode)
+
+
+
+
+######NECK
+class Neck(nn.Module):
+    def __init__(self, version):
+        super().__init__()
+        d,w,r = yolo_parameters(version=version)
+        ###Upsampling Layerss
+        self.upsample_10_13 = Upsample()#No trainable params
+        
+        ## C2F Layers
+        self.c2f_12 = C2F(in_channels=int(512*w*(1+r)), out_channels=int(512*w*(1+r)), 
+                            n_bnck=int(3*d), skip=False)
+        self.c2f_15 = C2F(in_channels=int(768*w), out_channels=int(256*w),
+                            n_bnck=int(3*d), skip=False)
+        self.c2f_18 = C2F(in_channels=int(768*w), out_channels=int(256*w),
+                            n_bnck=int(3*d), skip=False)
+        self.c2f_21 = C2F(in_channels=int(512*w*(1+r)), out_channels=int(512*w*r),
+                            n_bnck=int(3*d), skip=False)
+        #CONV Layers
+        self.conv_16 = Conv(in_channels=int(256*w), out_channels=int(256*w), kernel_size=3, stride=2, padding=1)
+        self.conv_19 = Conv(in_channels=int(512*w), out_channels=int(512*w), kernel_size=3, stride=2, padding=1)
+    def forward(self, x_res1, x_res2, x):
+        res1 = x
+        
+        x = self.upsample_10_13(x)
+        x = torch.cat([x, x_res2], dim=1)
+        
+        res2 = self.c2f_12(x) #residue connection cuh
+        
+        x = self.upsample_10_13(res2)
+        x = torch.cat([x, x_res1], dim=1)
+        
+        out_1 = self.c2f_15(x)
+        
+        x=self.conv_16(out_1)
+
+        x = torch.cat([x, res2], dim=1)
+        out_2 = self.c2f_18(x)
+        
+        x = self.conv_19(out_2)
+        
+        x = torch.cat([x, res1], dim=1)
+        out_3 = self.c2f_21(x)
+        
+        return out_1, out_2, out_3
+
+
+####TEEEEEEEST
+neck = Neck(version="n")
+print(f"{sum(p.numel() for p in neck.parameters())/1e6} million parameters")
+x = torch.rand(1, 3, 640, 640)
+out1, out2, out3 = Backbone(version='n')(x)
+out1,out2,out3 = neck(out1, out2, out3)
+print(out1.shape)
+print(out2.shape)
+print(out3.shape)
