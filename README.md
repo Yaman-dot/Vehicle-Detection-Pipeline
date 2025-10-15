@@ -21,7 +21,7 @@ pip install ultralytics pandas scikit-learn pyyaml tqdm matplotlib
 
 ## Data Setup
 
-For datasets with the same as the dataset I used, you can run the conversion script
+For datasets with the same format as the dataset I used, you can run the conversion script
 
 ```python
 create_yolo_files()
@@ -55,30 +55,30 @@ After training, you can evaluate the model on the validation set or run inferenc
 
 1. Model Evaluation
 
-Uncomment the evaluation step in ```main.py``` and run the script. Specify your own ```.pt``` model or use Yolo pretrained models
+    Uncomment the evaluation step in ```main.py``` and run the script. Specify your own ```.pt``` model or use Yolo pretrained models
 
-```python
-# In main.py
-evaluate_model(
-    model_path="path/to/your/best.pt",
-    data_yaml="data/vehicles.yaml"
-)
-```
+    ```python
+    # In main.py
+    evaluate_model(
+        model_path="path/to/your/best.pt",
+        data_yaml="data/vehicles.yaml"
+    )
+    ```
 
-**Output**: Prints evaluation metrics like mAP50, mAP50-95, Precision, and Recall on the validation set.
+    **Output**: Prints evaluation metrics like mAP50, mAP50-95, Precision, and Recall on the validation set.
 2. Model Inference
 
-Uncomment the inference step in ```main.py``` and set a valid image path for the ```source``` argument
+    Uncomment the inference step in ```main.py``` and set a valid image path for the ```source``` argument
 
-```python
-# In main.py
-run_inference(
-    model_path="path/to/your/best.pt",
-    source="path/to/your/image.jpg"
-)
-```
+    ```python
+    # In main.py
+    run_inference(
+        model_path="path/to/your/best.pt",
+        source="path/to/your/image.jpg"
+    )
+    ```
 
-**Output**: The predicted image (with bounding boxes) will be saved by ```ultralytics``` to a new subdirectory within ```runs/detect``` (or the save_dirs you specify in ```infer.py```)
+    **Output**: The predicted image (with bounding boxes) will be saved by ```ultralytics``` to a new subdirectory within ```runs/detect``` (or the save_dirs you specify in ```infer.py```)
 
 ## Custom YOLOv8 Model Implementation
 
