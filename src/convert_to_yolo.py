@@ -43,7 +43,7 @@ def create_yolo_files():
                     x_center, y_center, width, height = convert_to_yolo_bbox(row["XMin"], row["XMax"], row["YMin"], row["YMax"])
                     f.write(f"{cls} {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}\n")
 
-            # Copy image safely using shutil
+            # Copy image safely using shutil    
             src = os.path.join(IMG_DIR, f"{img_id}.jpg")
             dst = os.path.join(OUTPUT_DIR, "images", split, f"{img_id}.jpg")
             if os.path.exists(src):

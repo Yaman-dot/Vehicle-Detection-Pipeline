@@ -1,22 +1,32 @@
 import os
 import matplotlib.pyplot as plt
+import pandas as pd
 from ultralytics import YOLO
 from datetime import datetime
 
+# Set non-interactive Matplotlib backend for compatibility in non-GUI environments
+plt.switch_backend('Agg')
 
-def plot_training_metrics(results, save_dir):
+def plot_training_metrics(save_dir):
+    # Path to the results CSV file
+    results_csv_path = os.path.join(save_dir, "train_results", "results.csv")
     
-    # Extract metrics safely
-    metrics = results.results_dict
-    epochs = range(1, len(metrics['train/box_loss']) + 1)
-
-    # Prepare data
-    box_loss = metrics['train/box_loss']
-    cls_loss = metrics['train/cls_loss']
-    precision = metrics['metrics/precision(B)']
-    recall = metrics['metrics/recall(B)']
-    map50 = metrics['metrics/mAP50(B)']
-    map5095 = metrics['metrics/mAP50-95(B)']
+    if not os.path.exists(results_csv_path):
+        print(f"Results CSV not found at {results_csv_path}. Skipping plot.")
+        return
+    
+    # Read metrics from CSV and strip any leading/trailing spaces from column names
+    df = pd.read_csv(results_csv_path)
+    df.columns = df.columns.str.strip()  # Remove spaces around column names
+    
+    # Extract epochs and metrics (adjust if your CSV has different columns)
+    epochs = df['epoch']
+    box_loss = df['train/box_loss']
+    cls_loss = df['train/cls_loss']  # Assuming DFL loss is not plotted; add if needed
+    precision = df['metrics/precision(B)']
+    recall = df['metrics/recall(B)']
+    map50 = df['metrics/mAP50(B)']
+    map5095 = df['metrics/mAP50-95(B)']
 
     # Create the plot figure
     plt.figure(figsize=(12, 8))
@@ -63,22 +73,27 @@ def plot_training_metrics(results, save_dir):
 
     print(f"Training metrics plot saved to {plot_path}")
 
-def train_yolo_model(data_path, model_path, save_dir, epochs = 50, batch_size = 16, img_size = 640):
+def train_yolo_model(data_path, model_path, save_dir, epochs=50, batch_size=16, img_size=640):
     
-    os.makedirs(save_dir, exist_ok=True) #if savedirs is not available, create it, if not just dont overwrite it
+    os.makedirs(save_dir, exist_ok=True)  # Create save_dir if it doesn't exist
     model = YOLO(model_path)
     
     results = model.train(
-        data = data_path,
+        data=data_path,
         epochs=epochs,
         batch=batch_size,
         imgsz=img_size,
         project=save_dir,
         name="train_results",
-        exist_ok=True #to not overwrite the existing results.
+        exist_ok=True  # Do not overwrite existing results
     )
+    
+    # Plot metrics from the CSV (no need to pass results, as per-epoch data is in CSV)
+    plot_training_metrics(save_dir)
+    
+    # Path to the best model (YOLO saves it automatically if val=True, which is default)
     best_model_path = os.path.join(save_dir, "train_results", "weights", "best.pt")
-    plot_training_metrics(results, save_dir)
-    print(f"Training Complete, Results are saved in {save_dir}")
+    
+    print(f"Training Complete. Results are saved in {save_dir}")
     
     return best_model_path
