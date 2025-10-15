@@ -38,4 +38,42 @@ class BottleNeck(nn.Module):
         if self.skip:
             x=x+x_ins # add residual connection if u want
         return x
-### C2F
+### C2F = conv+bottlenec*n+conv
+
+class C2F(nn.Module):
+    def __init__(self, in_channels, out_channels, n_bnck=1, skip=True):
+        super().__init__()
+        mid_channels = out_channels//2
+        self.n_bnck = n_bnck
+        
+        self.conv1 = Conv(in_channels, mid_channels, kernel_size=1, stride=1, padding=0)
+        #Bottleneck layers
+        self.bnck_layers = nn.ModuleList([BottleNeck(mid_channels, mid_channels) for _ in range(n_bnck)])
+        self.conv2 = Conv((n_bnck+2)*mid_channels, out_channels, kernel_size=1, stride=1, padding=0)
+    def forward(self, x):
+        x=self.conv1(x)
+        #split
+        '''mid = x.shape[1]//2
+        x1,x2 = x[:,:mid,:,:], x[:,mid,:,:]'''
+        try:
+            x1,x2 = torch.chunk(x,2,dim=1)
+        except RuntimeError:
+            print("It probably can't divide it by 2 evenly, using manual slicing instead")
+            mid = x.shape[1]//2
+            x1,x2 = x[:, :mid, :, :], x[:,mid:,:,:]
+    
+        outputs = [x1,x2]
+        for bnck in self.bnck_layers:
+            x2 = bnck(x2)
+            outputs.append(x2)
+        
+        x = torch.cat(outputs, dim=1)
+        x = self.conv2(x)
+        return x
+
+c2f = C2F(in_channels=64, out_channels=128, n_bnck=2)
+
+x = torch.rand((1, 64, 244, 244))
+y = c2f(x)
+print("hello??")
+print(f"output shape: {y.shape}")
