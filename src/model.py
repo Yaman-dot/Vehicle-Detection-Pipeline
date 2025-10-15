@@ -71,9 +71,26 @@ class C2F(nn.Module):
         x = self.conv2(x)
         return x
 
-c2f = C2F(in_channels=64, out_channels=128, n_bnck=2)
 
-x = torch.rand(1, 64, 244, 244)
-y = c2f(x)
-print("hello??")
-print(f"output shape: {y.shape}")
+
+### SPPF Block
+
+class SPPF(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=5):
+        super().__init__() #kernel_Size=maxpool_size
+        hidden_channels = in_channels//2 #
+        self.conv1 = Conv(in_channels, out_channels, kernel_size=1, stride=1,padding=0)
+        self.conv2 = Conv(4*hidden_channels, out_channels, kernel_size=1, stride=1, padding=0)
+        self.mp = nn.MaxPool2d(kernel_size=kernel_size, stride=1, padding=kernel_size//2, dilation=1, ceil_mode=False) #padding is set to kernelsize//2 to keep the output dimension the same.
+    def forward(self, x):
+        x = self.conv1(x)
+        #apply maxpool for 3 scales
+        y = x
+        outputs = [x]
+        for i in range(3):
+            y = self.mp(y)
+            outputs.append(y)
+        x = torch.cat(outputs, dim=1)
+        x = self.conv2(x)
+        return x
+        
