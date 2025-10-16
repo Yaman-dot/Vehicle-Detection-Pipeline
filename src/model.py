@@ -158,7 +158,7 @@ class Backbone(nn.Module):
 
 #testing
 '''Backbone_n = Backbone(version='n')
-#print(f"{sum(p.numel() for p in Backbone_n.parameters())/1e6} million parameters")
+
 
 x =torch.rand(1,3,640,640)
 x1,x2,x3 = Backbone_n(x)
@@ -225,11 +225,42 @@ class Neck(nn.Module):
 
 
 ####TEEEEEEEST
-neck = Neck(version="n")
-print(f"{sum(p.numel() for p in neck.parameters())/1e6} million parameters")
+'''neck = Neck(version="n")
+
 x = torch.rand(1, 3, 640, 640)
 out1, out2, out3 = Backbone(version='n')(x)
 out1,out2,out3 = neck(out1, out2, out3)
 print(out1.shape)
 print(out2.shape)
-print(out3.shape)
+print(out3.shape)'''
+
+
+
+####Head, need to build the dfl first
+######DFL
+class DFL(nn.Module):
+    def __init__(self, ch=16):
+        super().__init__()
+        self.ch = ch
+
+        self.conv = nn.Conv2d(in_channels=ch, out_channels=1, kernel_size=1, bias=False).requires_grad_(False)
+
+        x=torch.arange(ch, dtype=torch.float).view(1,ch,1,1)
+        self.conv.weight.data[:]=torch.nn.Parameter(x)
+
+    def forward(self, x):
+        b,c,a=x.shape #x have 4*ch num of channels: x=[bs,4*ch,c]
+        x=x.view(b,4,self.ch,a).transpose(1,2) #[bs,ch,4,a]
+
+        #take the softmax on channel dimension to get distribution probabilities
+        x=x.softmax(1) 
+        x=self.conv(x) #[b, 1,4,a]
+        return x.view(b,4,a) #[b,4,a]
+#testing
+'''dfl = DFL()
+x = torch.rand(1,64,128)
+y = dfl(x)
+print(dfl)'''
+
+
+###Head
