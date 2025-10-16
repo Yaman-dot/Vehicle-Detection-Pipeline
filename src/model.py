@@ -225,14 +225,14 @@ class Neck(nn.Module):
 
 
 ####TEEEEEEEST
-'''neck = Neck(version="n")
+neck = Neck(version="n")
 
 x = torch.rand(1, 3, 640, 640)
 out1, out2, out3 = Backbone(version='n')(x)
 out1,out2,out3 = neck(out1, out2, out3)
-print(out1.shape)
-print(out2.shape)
-print(out3.shape)'''
+#print(out1.shape)
+#print(out2.shape)
+#print(out3.shape)
 
 
 
@@ -264,3 +264,98 @@ print(dfl)'''
 
 
 ###Head
+class Head(nn.Module):
+    def __init__(self, version, ch=16, num_classes = 80):
+        super().__init__()
+        
+        self.ch = ch
+        self.coordinates = self.ch*4 #number of bounding box coordinates
+        self.nc = num_classes
+        self.no = self.coordinates+self.nc #number of output per anchor box
+        
+        self.stride = torch.zeros(3) #calculated during training
+        d, w, r = yolo_parameters(version=version)
+        
+        ##for bounding boxes
+        self.box = nn.ModuleList([
+            nn.Sequential(Conv(int(256*w), self.coordinates, kernel_size=3, stride=1, padding=1),
+                          Conv(self.coordinates, self.coordinates, kernel_size=3, stride=1, padding=1),
+                          nn.Conv2d(self.coordinates, self.coordinates, kernel_size=1, stride=1)),
+            
+            nn.Sequential(Conv(int(512*w), self.coordinates, kernel_size=3, stride=1, padding=1),
+                          Conv(self.coordinates, self.coordinates, kernel_size=3, stride=1, padding=1),
+                          nn.Conv2d(self.coordinates, self.coordinates, kernel_size=1, stride=1)),
+            
+            nn.Sequential(Conv(int(512*w*r), self.coordinates, kernel_size=3, stride=1, padding=1),
+                          Conv(self.coordinates, self.coordinates, kernel_size=3, stride=1, padding=1),
+                          nn.Conv2d(self.coordinates, self.coordinates, kernel_size=1, stride=1)),
+        ])
+        
+        
+        ##for classes
+        self.cls = nn.ModuleList([
+            nn.Sequential(Conv(int(256*w), self.nc, kernel_size=3, stride=1, padding=1),
+                          Conv(self.nc, self.nc, kernel_size=3, stride=1, padding=1),
+                          nn.Conv2d(self.nc, self.nc, kernel_size=1, stride=1)),
+            nn.Sequential(Conv(int(512*w), self.nc, kernel_size=3, stride=1, padding=1),
+                          Conv(self.nc, self.nc, kernel_size=3, stride=1, padding=1),
+                          nn.Conv2d(self.nc, self.nc, kernel_size=1, stride=1)),
+            nn.Sequential(Conv(int(512*w*r), self.nc, kernel_size=3, stride=1, padding=1),
+                          Conv(self.nc, self.nc, kernel_size=3, stride=1, padding=1),
+                          nn.Conv2d(self.nc, self.nc, kernel_size=1, stride=1)),
+        ])
+        
+        self.dfl = DFL()
+    def forward(self, x):
+        #x is output of the neck which consists of 3 tensors with different res and channel dim
+        for i in range(len(self.box)):
+            box=self.box[i](x[i]) #[bs, num_coordinates, w, h]
+            cls=self.cls[i](x[i]) #[bs, num_classes, w, h]
+            x[i]=torch.cat((box,cls),dim=1) #[bs, num_coordinates+num_classes,w,h]
+        #No DFL output when training
+        if self.training:
+            return x #[3,bs,num_coordinates+num_classes,w,h]
+        
+        anchors, strides = (i.transpose(0,1) for i in self.make_anchors(x,self.stride))
+        
+        x=torch.cat([i.view(x[0].shape[0], self.no,-1) for i in x], dim=2) #[bs, 4*self.ch+self.nc, sum_i(h[i],w[i])]
+        
+        box,cls = x.split(split_size=(4*self.ch, self.nc), dim=1)
+        a,b=self.dfl(box).chunk(2,1) #a=b=[bs,2*self.ch,sum_i(h[i],w[i])]
+        a=anchors.unsqueeze(0)-a
+        b=anchors.unsqueeze(0)+b
+        box=torch.cat(tensors=((a+b)/2, b-1), dim=1)
+        
+        return torch.cat(tensors=(box*strides, cls.sigmoid()), dim=1)
+    def make_anchors(x, stride, offset=0.5):
+        assert x is not None
+        anchor_Tensor, stride_Tensor = [], []
+        dtype, device = x[0].dtype, x[0].device
+        for i, stride in enumerate(stride):
+            _,_,h,w = x[i].shape
+            sx = torch.arange(end=w,device=device, dtype=dtype)
+            sy = torch.arange(end=h, device=device, dtype=dtype)
+            anchor_Tensor.append(torch.stack((sx,sy),-1).view(-1,2))
+            stride_Tensor.append(torch.full((h*w,1), stride, dtype=dtype, device=device))
+        return torch.cat(anchor_Tensor), torch.cat(stride_Tensor)
+    
+    
+##Test
+'''head = Head(version='n')
+y = head([out1, out2, out3])
+print(out1.shape)
+print(out2.shape)
+print(out3.shape)'''
+
+##YOLO
+
+class Yolo(nn.Module):
+    def __init__(self, version):
+        super().__init__()
+        self.backbone = Backbone(version=version)
+        self.neck = Neck(version=version)
+        self.head = Head(version=version)
+    def forward(self, x):
+        x=self.backbone(x)
+        x = self.neck(x[0],x[1],x[2])
+        return self.head(list(x))
